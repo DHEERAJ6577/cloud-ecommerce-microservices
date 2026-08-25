@@ -147,17 +147,20 @@ POST   /users
 POST   /login
 PUT    /users/{user_id}
 DELETE /users/{user_id}
+
 Product Service
 GET    /products
 POST   /products
 PUT    /products/{product_id}
 DELETE /products/{product_id}
+
 Order Service
 POST   /orders
 GET    /orders
 GET    /orders/{order_id}
 POST   /orders/{order_id}/cancel
 PUT    /orders/{order_id}/status
+
 Cart Service
 POST   /cart/items
 GET    /cart
@@ -165,6 +168,8 @@ PUT    /cart/items/{product_id}
 DELETE /cart/items/{product_id}
 DELETE /cart
 POST   /checkout
+
+
 Technologies Used
 Python
 FastAPI
@@ -176,6 +181,8 @@ Argon2
 Docker
 Docker Compose
 Swagger / OpenAPI
+
+
 Project Structure
 cloud-ecommerce-microservices/
 |
@@ -195,6 +202,8 @@ cloud-ecommerce-microservices/
     +-- product-service/
     +-- order-service/
     +-- cart-service/
+
+
 Environment Setup
 
 Create your local environment file from the example:
@@ -225,6 +234,8 @@ http://localhost:8000/docs
 http://localhost:8001/docs
 http://localhost:8002/docs
 http://localhost:8003/docs
+
+
 Future Work
 
 Possible future improvements include:
