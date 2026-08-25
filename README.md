@@ -1,6 +1,6 @@
-Cloud E-Commerce Microservices Platform
+# Cloud E-Commerce Microservices Platform
 
-A simple e-commerce backend built using FastAPI, Docker, PostgreSQL, JWT authentication, and a microservices architecture.
+A simple e-commerce backend built using FastAPI, Docker, PostgreSQL, JWT authentication, and microservices.
 
 This project was built as a hands-on learning project to understand how different microservices communicate with each other while maintaining their own databases.
 
@@ -8,52 +8,117 @@ This project was built as a hands-on learning project to understand how differen
 
 ![Cloud E-Commerce Microservices Architecture](docs/architecture.png)
 
-The project contains four main microservices:
+The application contains four main services:
 
 - User Service
 - Product Service
 - Order Service
 - Cart Service
 
-All client requests go through the API Gateway.
+All requests from the client go through the API Gateway.
 
 Each service has its own PostgreSQL database.
 
-## Services
+### Request Flow
 
-API Gateway - Port 8080  
-Routes requests and handles authentication.
+```text
+                         CLIENT
+                           |
+                           v
+                  API Gateway :8080
+                           |
+        +------------------+------------------+
+        |                  |                  |
+        v                  v                  v
+ User Service       Product Service      Order Service
+    :8000                :8001               :8002
+        |                  |                  |
+        v                  v                  v
+    User DB            Product DB          Order DB
+   PostgreSQL          PostgreSQL          PostgreSQL
+     :5433                :5434              :5435
+                                               ^
+                                               |
+                                               | HTTP
+                                               |
+                                        Cart Service
+                                           :8003
+                                               |
+                                               v
+                                           Cart DB
+                                          PostgreSQL
+                                            :5436
+Services
 
-User Service - Port 8000  
-Handles registration, login, users, and roles.
+API Gateway - Port 8080
 
-Product Service - Port 8001  
-Handles products, prices, and inventory.
+Main entry point for the application.
 
-Order Service - Port 8002  
-Handles orders, order status, cancellations, and inventory coordination.
+Handles authentication and sends requests to the correct service.
 
-Cart Service - Port 8003  
-Handles the shopping cart and checkout.
+User Service - Port 8000
 
-## Database
+Handles:
 
-Each service has its own database:
+User registration
+Login
+User accounts
+User roles
 
-- User Service → `userdb`
-- Product Service → `productdb`
-- Order Service → `orderdb`
-- Cart Service → `cartdb`
+Product Service - Port 8001
 
-This follows the database-per-service approach.
+Handles:
 
-## Authentication
+Products
+Prices
+Product stock
+
+Order Service - Port 8002
+
+Handles:
+
+Order creation
+Order status
+Order cancellation
+Inventory coordination
+
+Cart Service - Port 8003
+
+Handles:
+
+Shopping cart
+Cart items
+Checkout
+Database
+
+Each service has its own PostgreSQL database.
+
+User Service
+    |
+    v
+userdb :5433
+
+Product Service
+    |
+    v
+productdb :5434
+
+Order Service
+    |
+    v
+orderdb :5435
+
+Cart Service
+    |
+    v
+cartdb :5436
+
+The services do not directly share database tables.
+
+Authentication
 
 The application uses JWT authentication.
 
-The basic flow is:
-
-```text
 User Login
     |
     v
@@ -81,15 +146,15 @@ Admins can manage products and update order status.
 
 Order Management
 
-Orders use the following lifecycle:
+Orders follow this lifecycle:
 
 pending
    |
-   +----> confirmed ----> completed
+   +------> confirmed ------> completed
    |
-   +----> cancelled
+   +------> cancelled
 
-The Order Service checks the product, checks stock, calculates the total price, and creates the order.
+The Order Service checks the product, checks stock, gets the current price, calculates the order total, and creates the order.
 
 Customers can cancel their own pending orders.
 
@@ -97,57 +162,62 @@ Admins can update order status.
 
 Cart and Checkout
 
-The Cart Service manages shopping cart items.
+Adding a product to the cart does not reduce product stock.
 
-Adding an item to the cart does not reduce product stock.
+Stock is reduced when checkout successfully creates the order.
 
-Stock is reduced when checkout creates the order.
-
-The checkout flow is:
-
-Cart
-  |
-  v
-Checkout
-  |
-  v
+Checkout Flow
+Customer
+   |
+   v
+Cart Service
+   |
+   | POST /checkout
+   v
 Order Service
-  |
-  v
-Product Service
-  |
-  v
-Stock updated
-  |
-  v
-Order created
-  |
-  v
-Cart cleared
+   |
+   +----> Check Product
+   |
+   +----> Check Stock
+   |
+   +----> Get Price
+   |
+   +----> Reduce Stock
+   |
+   +----> Create Order
+   |
+   v
+Order Created
+   |
+   v
+Cart Cleared
 Inventory and Failure Handling
 
 The Product Service owns the inventory.
 
 The Order Service communicates with the Product Service to reduce or restore stock.
 
-The project also demonstrates a simple compensating action.
+The Order Service does not directly access the Product database.
 
-For example:
+Compensating Action
+
+The project also demonstrates a simple compensating action.
 
 Reduce Stock
      |
      v
 Create Order
      |
-     v
-If Order Fails
+     +------> Success
      |
-     v
-Restore Stock
+     +------> Failure
+                |
+                v
+          Restore Stock
 
-This is a compensating action rather than a distributed database transaction.
+This is a compensating action and not a distributed database transaction.
 
-Main API Endpoints
+API Endpoints
 
 User Service
 
@@ -212,7 +282,7 @@ cloud-ecommerce-microservices/
     +-- cart-service/
 Environment Setup
 
-Create your local environment file from the example:
+Create your local environment file:
 
 Copy-Item .env.example .env
 
@@ -222,15 +292,25 @@ The real .env file is ignored by Git and should not be committed.
 
 Running the Project
 
-Start all services with:
+Clone the repository:
+
+git clone <your-repository-url>
+cd cloud-ecommerce-microservices
+
+Create the environment file:
+
+Copy-Item .env.example .env
+
+Build and start all services:
 
 docker compose up -d --build
 
 Check the containers:
 
 docker ps
+Swagger Documentation
 
-Open the main Swagger documentation:
+Main API documentation:
 
 http://localhost:8080/docs
 
@@ -240,17 +320,17 @@ http://localhost:8000/docs
 http://localhost:8001/docs
 http://localhost:8002/docs
 http://localhost:8003/docs
-Future Work
 
-Possible future improvements include:
+The API Gateway is the main entry point for the application.
 
+Future Improvements
 React frontend
 Kubernetes deployment
-CI/CD with GitHub Actions
-Monitoring with Prometheus and Grafana
+GitHub Actions CI/CD
+Prometheus and Grafana
 Cloud deployment
 Author
 
 Dheeraj Kumar
 
-Built as a hands-on project to learn microservices, Docker, APIs, authentication, databases, and cloud-native application development.
+Built as a hands-on project to learn microservices, Docker, APIs, authentication, databases, and cloud-native application development
