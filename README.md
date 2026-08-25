@@ -30,13 +30,13 @@ The system consists of four independent backend microservices:
 
 
 
-\- \*\*User Service\*\* — user registration, login, authentication, and role management
+\- User Service — user registration, login, authentication, and role management
 
-\- \*\*Product Service\*\* — product management and inventory
+\- Product Service — product management and inventory
 
-\- \*\*Order Service\*\* — order creation, status management, cancellation, and inventory coordination
+\- Order Service — order creation, status management, cancellation, and inventory coordination
 
-\- \*\*Cart Service\*\* — shopping cart management and checkout
+\- Cart Service — shopping cart management and checkout
 
 
 
@@ -70,17 +70,17 @@ API Gateway :8080
 
 &#x20;  v                      v                      v                      v
 
-User Service          Product Service        Order Service          Cart Service
+User Service             Product Service        Order Service          Cart Service
 
-:8000                 :8001                  :8002                  :8003
+:8000                        :8001                 :8002                  :8003
 
 &#x20;  |                      |                      |                      |
 
 &#x20;  v                      v                      v                      v
 
-User DB               Product DB              Order DB               Cart DB
+User DB                   Product DB              Order DB               Cart DB
 
-:5433                  :5434                  :5435                  :5436
+:5433                        :5434                  :5435                  :5436
 
 
 
