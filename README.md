@@ -1,833 +1,241 @@
-\# Cloud E-Commerce Microservices Platform
+# Cloud E-Commerce Microservices Platform
 
+A simple e-commerce backend built using FastAPI, Docker, PostgreSQL, JWT authentication, and a microservices architecture.
 
+This project was built as a hands-on learning project to understand how different microservices communicate with each other while maintaining their own databases.
 
-A containerized e-commerce backend built using \*\*FastAPI, Docker, PostgreSQL, JWT authentication, and a microservices architecture\*\*.
+## Architecture
 
+![Cloud E-Commerce Microservices Architecture](docs/architecture.png)
 
+The project contains four main microservices:
 
-This project is a hands-on demonstration of cloud-native and microservices concepts including service isolation, API Gateway routing, authentication, authorization, inventory management, order processing, cart management, checkout, and compensating actions.
+- User Service
+- Product Service
+- Order Service
+- Cart Service
 
+All client requests go through the API Gateway.
 
+Each service has its own PostgreSQL database.
 
-\---
+## Services
 
+| Service | Port | Purpose |
+| --- | ---: | --- |
+| API Gateway | 8080 | Routes requests and handles authentication |
+| User Service | 8000 | Registration, login, users and roles |
+| Product Service | 8001 | Product management and inventory |
+| Order Service | 8002 | Orders and order status |
+| Cart Service | 8003 | Shopping cart and checkout |
 
+## Database
 
-\## Architecture
+Each service has its own database:
 
+- User Service → `userdb`
+- Product Service → `productdb`
+- Order Service → `orderdb`
+- Cart Service → `cartdb`
 
+This follows the database-per-service approach.
 
-!\[Cloud E-Commerce Microservices Architecture](docs/architecture.png)
+## Authentication
 
+The application uses JWT authentication.
 
-
-\### Architecture Overview
-
-
-
-The system consists of four independent backend microservices:
-
-
-
-\- User Service — user registration, login, authentication, and role management
-
-\- Product Service — product management and inventory
-
-\- Order Service — order creation, status management, cancellation, and inventory coordination
-
-\- Cart Service — shopping cart management and checkout
-
-
-
-All client requests are routed through the \*\*API Gateway\*\*.
-
-
-
-Each microservice owns its own PostgreSQL database following the \*\*database-per-service\*\* pattern.
-
-
-
-\### Service-to-Service Communication
-
-
+The basic flow is:
 
 ```text
-
-Client
-
-&#x20;  |
-
-&#x20;  v
-
-API Gateway :8080
-
-&#x20;  |
-
-&#x20;  +----------------------+----------------------+----------------------+
-
-&#x20;  |                      |                      |                      |
-
-&#x20;  v                      v                      v                      v
-
-User Service             Product Service        Order Service          Cart Service
-
-:8000                        :8001                 :8002                  :8003
-
-&#x20;  |                      |                      |                      |
-
-&#x20;  v                      v                      v                      v
-
-User DB                   Product DB              Order DB               Cart DB
-
-:5433                        :5434                  :5435                  :5436
-
-
-
-The main checkout interaction is:
-
-
-
-Cart Service
-
-&#x20;    |
-
-&#x20;    | POST /checkout
-
-&#x20;    v
-
-Order Service
-
-&#x20;    |
-
-&#x20;    v
-
-Product Service
-
-&#x20;    |
-
-&#x20;    v
-
-Inventory Updated
-
-Services
-
-Service	Port	Responsibility
-
-API Gateway	8080	Routing, JWT verification, authorization
-
-User Service	8000	Users, login, JWT, roles
-
-Product Service	8001	Products and inventory
-
-Order Service	8002	Orders and order lifecycle
-
-Cart Service	8003	Cart and checkout
-
-Database Architecture
-
-
-
-Each microservice has its own PostgreSQL database.
-
-
-
-Service	Database	Host Port
-
-User Service	userdb	5433
-
-Product Service	productdb	5434
-
-Order Service	orderdb	5435
-
-Cart Service	cartdb	5436
-
-
-
-The services do not directly share database tables.
-
-
-
-Authentication and Authorization
-
-
-
-Authentication uses JWT.
-
-
-
 User Login
-
-&#x20;   |
-
-&#x20;   v
-
+    |
+    v
 User Service
-
-&#x20;   |
-
-&#x20;   v
-
+    |
+    v
 JWT Token
-
-&#x20;   |
-
-&#x20;   v
-
+    |
+    v
 API Gateway
-
-&#x20;   |
-
-&#x20;   v
-
-Token Verification
-
-&#x20;   |
-
-&#x20;   v
-
+    |
+    v
 Authenticated Request
 
+The API Gateway gets the user ID from the JWT and passes it to the internal services using the X-User-ID header.
 
-
-The API Gateway extracts the authenticated user's ID from the JWT and forwards it to internal services using:
-
-
-
-X-User-ID
-
-Roles
+There are two roles:
 
 Customer
-
-
-
-Customers can:
-
-
-
-Manage their own account
-
-View products
-
-Add and manage cart items
-
-Checkout
-
-View their own orders
-
-Cancel their own pending orders
-
 Admin
 
+Customers can manage their own account, cart and orders.
 
+Admins can manage products and update order status.
 
-Admins can:
+Order Management
 
+Orders use the following lifecycle:
 
+pending
+   |
+   +----> confirmed ----> completed
+   |
+   +----> cancelled
 
-Manage products
+The Order Service checks the product, checks stock, calculates the total price and creates the order.
 
-Update order status
+Customers can cancel their own pending orders.
 
-Perform administrative operations through protected endpoints
+Admins can update order status.
 
-Order Lifecycle
+Cart and Checkout
 
+The Cart Service manages shopping cart items.
 
+Adding an item to the cart does not reduce product stock.
 
-Orders follow this lifecycle:
+Stock is reduced when checkout creates the order.
 
+The checkout flow is:
 
-
-&#x20;            +-----------+
-
-&#x20;            |  pending  |
-
-&#x20;            +-----+-----+
-
-&#x20;                  |
-
-&#x20;         +--------+--------+
-
-&#x20;         |                 |
-
-&#x20;         v                 v
-
-&#x20;   +-----------+     +-----------+
-
-&#x20;   | confirmed |     | cancelled |
-
-&#x20;   +-----+-----+     +-----------+
-
-&#x20;         |
-
-&#x20;         v
-
-&#x20;   +-----------+
-
-&#x20;   | completed |
-
-&#x20;   +-----------+
-
-
-
-Valid transitions include:
-
-
-
-pending     -> confirmed
-
-pending     -> cancelled
-
-confirmed   -> completed
-
-
-
-Invalid transitions are rejected by the Order Service.
-
-
-
-Cart and Checkout Flow
-
-Customer
-
-&#x20;  |
-
-&#x20;  v
-
-Cart Service
-
-&#x20;  |
-
-&#x20;  | POST /checkout
-
-&#x20;  v
-
-Order Service
-
-&#x20;  |
-
-&#x20;  +--> Validate Product
-
-&#x20;  |
-
-&#x20;  +--> Validate Stock
-
-&#x20;  |
-
-&#x20;  +--> Get Current Price
-
-&#x20;  |
-
-&#x20;  +--> Reduce Stock
-
-&#x20;  |
-
-&#x20;  +--> Create Order
-
-&#x20;  |
-
-&#x20;  v
-
-Order Created
-
-&#x20;  |
-
-&#x20;  v
-
-Cart Cleared
-
-
-
-Adding an item to the cart does not reduce product inventory.
-
-
-
-Inventory is reduced when the order is successfully created.
-
-
-
-Inventory Management
-
-
-
-The Product Service owns inventory.
-
-
-
-It provides operations for:
-
-
-
-Decrease Stock
-
-Increase Stock
-
-
-
-The Order Service communicates with the Product Service instead of directly modifying the Product database.
-
-
-
-Order Service
-
-&#x20;     |
-
-&#x20;     | HTTP
-
-&#x20;     v
-
-Product Service
-
-&#x20;     |
-
-&#x20;     v
-
-Product Database
-
-
-
-This keeps service ownership boundaries clear.
-
-
-
-Compensating Action
-
-
-
-The project demonstrates a simple compensating-action pattern for handling failures across independent services.
-
-
-
-Example:
-
-
-
-Decrease Stock
-
-&#x20;     |
-
-&#x20;     v
-
-Create Order
-
-&#x20;     |
-
-&#x20;  +--+--+
-
-&#x20;  |     |
-
-Success Failure
-
-&#x20;  |     |
-
-&#x20;  v     v
-
-&#x20;Done  Restore Stock
-
-
-
-If order creation fails after inventory has been reduced, the Order Service attempts to restore the affected inventory.
-
-
-
-This is a compensating action, not a true distributed database transaction.
-
-
-
-API Endpoints
-
-User Service
-
-GET    /users
-
-POST   /users
-
-POST   /login
-
-PUT    /users/{user\_id}
-
-DELETE /users/{user\_id}
-
-Product Service
-
-GET    /products
-
-POST   /products
-
-PUT    /products/{product\_id}
-
-DELETE /products/{product\_id}
-
-Order Service
-
-POST   /orders
-
-GET    /orders
-
-GET    /orders/{order\_id}
-
-POST   /orders/{order\_id}/cancel
-
-PUT    /orders/{order\_id}/status
-
-Cart Service
-
-POST   /cart/items
-
-GET    /cart
-
-PUT    /cart/items/{product\_id}
-
-DELETE /cart/items/{product\_id}
-
-DELETE /cart
-
+Cart
+  |
+  v
 Checkout
+  |
+  v
+Order Service
+  |
+  v
+Product Service
+  |
+  v
+Stock updated
+  |
+  v
+Order created
+  |
+  v
+Cart cleared
+Inventory and Failure Handling
 
+The Product Service owns the inventory.
+
+The Order Service communicates with the Product Service to reduce or restore stock.
+
+The project also demonstrates a simple compensating action.
+
+For example:
+
+Reduce Stock
+     |
+     v
+Create Order
+     |
+     v
+If Order Fails
+     |
+     v
+Restore Stock
+
+This is a compensating action rather than a distributed database transaction.
+
+Main API Endpoints
+User Service
+GET    /users
+POST   /users
+POST   /login
+PUT    /users/{user_id}
+DELETE /users/{user_id}
+Product Service
+GET    /products
+POST   /products
+PUT    /products/{product_id}
+DELETE /products/{product_id}
+Order Service
+POST   /orders
+GET    /orders
+GET    /orders/{order_id}
+POST   /orders/{order_id}/cancel
+PUT    /orders/{order_id}/status
+Cart Service
+POST   /cart/items
+GET    /cart
+PUT    /cart/items/{product_id}
+DELETE /cart/items/{product_id}
+DELETE /cart
 POST   /checkout
-
-Technology Stack
-
-Backend
-
+Technologies Used
 Python
-
 FastAPI
-
-Pydantic
-
-SQLAlchemy
-
-HTTPX
-
-Database
-
 PostgreSQL
-
-Authentication
-
+SQLAlchemy
+HTTPX
 JWT
-
-Argon2 password hashing
-
-Containerization
-
+Argon2
 Docker
-
 Docker Compose
-
-API Documentation
-
 Swagger / OpenAPI
-
 Project Structure
-
 cloud-ecommerce-microservices/
-
 |
-
-+-- .env.example
-
-+-- .gitignore
-
 +-- README.md
-
++-- .env.example
++-- .gitignore
 +-- docker-compose.yml
-
 |
-
 +-- docs/
-
 |   +-- architecture.png
-
 |
-
 +-- api-gateway/
-
-|   +-- Dockerfile
-
-|   +-- jwt\_auth.py
-
-|   +-- main.py
-
-|   +-- requirements.txt
-
 |
-
 +-- services/
-
-&#x20;   |
-
-&#x20;   +-- user-service/
-
-&#x20;   |   +-- Dockerfile
-
-&#x20;   |   +-- auth.py
-
-&#x20;   |   +-- database.py
-
-&#x20;   |   +-- jwt\_auth.py
-
-&#x20;   |   +-- main.py
-
-&#x20;   |   +-- models.py
-
-&#x20;   |   +-- requirements.txt
-
-&#x20;   |   +-- schemas.py
-
-&#x20;   |
-
-&#x20;   +-- product-service/
-
-&#x20;   |   +-- Dockerfile
-
-&#x20;   |   +-- database.py
-
-&#x20;   |   +-- main.py
-
-&#x20;   |   +-- models.py
-
-&#x20;   |   +-- requirements.txt
-
-&#x20;   |   +-- schemas.py
-
-&#x20;   |
-
-&#x20;   +-- order-service/
-
-&#x20;   |   +-- Dockerfile
-
-&#x20;   |   +-- database.py
-
-&#x20;   |   +-- main.py
-
-&#x20;   |   +-- models.py
-
-&#x20;   |   +-- requirements.txt
-
-&#x20;   |   +-- schemas.py
-
-&#x20;   |
-
-&#x20;   +-- cart-service/
-
-&#x20;       +-- Dockerfile
-
-&#x20;       +-- database.py
-
-&#x20;       +-- main.py
-
-&#x20;       +-- models.py
-
-&#x20;       +-- requirements.txt
-
-&#x20;       +-- schemas.py
-
-Environment Configuration
-
-
-
-The real .env file is intentionally excluded from Git.
-
-
+    |
+    +-- user-service/
+    +-- product-service/
+    +-- order-service/
+    +-- cart-service/
+Environment Setup
 
 Create your local environment file from the example:
 
-
-
 Copy-Item .env.example .env
 
+Then add your local configuration.
 
-
-Then update the values for your environment.
-
-
-
-Example structure:
-
-
-
-JWT\_SECRET\_KEY=your-secret-key
-
-
-
-USER\_DATABASE\_URL=postgresql://userservice:your-user-password@user-postgres:5432/userdb
-
-PRODUCT\_DATABASE\_URL=postgresql://productservice:your-product-password@product-postgres:5432/productdb
-
-ORDER\_DATABASE\_URL=postgresql://orderservice:your-order-password@order-postgres:5432/orderdb
-
-CART\_DATABASE\_URL=postgresql://cartservice:your-cart-password@cart-postgres:5432/cartdb
-
-
-
-Inside Docker Compose, PostgreSQL services are reached using their service names and the internal PostgreSQL port 5432.
-
-
-
-Never commit the real .env file.
-
-
+The real .env file is ignored by Git and should not be committed.
 
 Running the Project
 
-1\. Clone the repository
-
-git clone <your-repository-url>
-
-cd cloud-ecommerce-microservices
-
-2\. Create the environment file
-
-Copy-Item .env.example .env
-
-
-
-Edit .env with your local configuration.
-
-
-
-3\. Build and start the project
+Start all services with:
 
 docker compose up -d --build
 
-4\. Check running containers
+Check the containers:
 
 docker ps
 
-5\. Open the main API documentation
+Open the main Swagger documentation:
 
 http://localhost:8080/docs
 
-Service URLs
-
-Service	URL
-
-API Gateway	http://localhost:8080
-
-User Service	http://localhost:8000
-
-Product Service	http://localhost:8001
-
-Order Service	http://localhost:8002
-
-Cart Service	http://localhost:8003
-
-Swagger Documentation
-
-http://localhost:8080/docs
+Other service documentation:
 
 http://localhost:8000/docs
-
 http://localhost:8001/docs
-
 http://localhost:8002/docs
-
 http://localhost:8003/docs
+Future Work
 
-
-
-The API Gateway is the primary entry point for client requests.
-
-
-
-PostgreSQL Ports
-
-Database	Host Port
-
-User PostgreSQL	5433
-
-Product PostgreSQL	5434
-
-Order PostgreSQL	5435
-
-Cart PostgreSQL	5436
-
-Key Microservices Concepts Demonstrated
-
-Microservice decomposition
-
-API Gateway pattern
-
-Database-per-service pattern
-
-REST APIs
-
-Synchronous service-to-service communication
-
-JWT authentication
-
-Role-based access control
-
-User ownership authorization
-
-Inventory management
-
-Order lifecycle management
-
-Cart management
-
-Checkout workflow
-
-Compensating actions
-
-Docker containerization
-
-Docker Compose orchestration
-
-PostgreSQL persistence
-
-Swagger / OpenAPI
-
-Current Project Scope
-
-
-
-This project focuses on the backend microservices and containerized architecture.
-
-
-
-It is intended as a hands-on learning and portfolio project demonstrating how independent services can communicate while maintaining separate databases and responsibilities.
-
-
-
-Future Enhancements
-
-
-
-Possible future improvements:
-
-
+Possible future improvements include:
 
 React frontend
-
 Kubernetes deployment
-
-Kubernetes Deployments and Services
-
-ConfigMaps and Secrets
-
-Persistent Volumes
-
-Ingress
-
-Horizontal Pod Autoscaling
-
-Prometheus and Grafana
-
-GitHub Actions CI/CD
-
+CI/CD with GitHub Actions
+Monitoring with Prometheus and Grafana
 Cloud deployment
-
 Author
-
-
 
 Dheeraj Kumar
 
-
-
-A hands-on cloud-native microservices learning and portfolio project.
+Built as a hands-on project to learn microservices, Docker, APIs, authentication, databases and cloud-native application development.
