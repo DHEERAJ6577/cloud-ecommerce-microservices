@@ -1,4 +1,4 @@
-# Cloud E-Commerce Microservices Platform
+Cloud E-Commerce Microservices Platform
 
 A simple e-commerce backend built using FastAPI, Docker, PostgreSQL, JWT authentication, and a microservices architecture.
 
@@ -21,13 +21,20 @@ Each service has its own PostgreSQL database.
 
 ## Services
 
-| Service | Port | Purpose |
-| --- | ---: | --- |
-| API Gateway | 8080 | Routes requests and handles authentication |
-| User Service | 8000 | Registration, login, users and roles |
-| Product Service | 8001 | Product management and inventory |
-| Order Service | 8002 | Orders and order status |
-| Cart Service | 8003 | Shopping cart and checkout |
+API Gateway - Port 8080  
+Routes requests and handles authentication.
+
+User Service - Port 8000  
+Handles registration, login, users, and roles.
+
+Product Service - Port 8001  
+Handles products, prices, and inventory.
+
+Order Service - Port 8002  
+Handles orders, order status, cancellations, and inventory coordination.
+
+Cart Service - Port 8003  
+Handles the shopping cart and checkout.
 
 ## Database
 
@@ -68,7 +75,7 @@ There are two roles:
 Customer
 Admin
 
-Customers can manage their own account, cart and orders.
+Customers can manage their own account, cart, and orders.
 
 Admins can manage products and update order status.
 
@@ -82,7 +89,7 @@ pending
    |
    +----> cancelled
 
-The Order Service checks the product, checks stock, calculates the total price and creates the order.
+The Order Service checks the product, checks stock, calculates the total price, and creates the order.
 
 Customers can cancel their own pending orders.
 
@@ -141,7 +148,9 @@ Restore Stock
 This is a compensating action rather than a distributed database transaction.
 
 Main API Endpoints
+
 User Service
+
 GET    /users
 POST   /users
 POST   /login
@@ -149,12 +158,14 @@ PUT    /users/{user_id}
 DELETE /users/{user_id}
 
 Product Service
+
 GET    /products
 POST   /products
 PUT    /products/{product_id}
 DELETE /products/{product_id}
 
 Order Service
+
 POST   /orders
 GET    /orders
 GET    /orders/{order_id}
@@ -162,14 +173,13 @@ POST   /orders/{order_id}/cancel
 PUT    /orders/{order_id}/status
 
 Cart Service
+
 POST   /cart/items
 GET    /cart
 PUT    /cart/items/{product_id}
 DELETE /cart/items/{product_id}
 DELETE /cart
 POST   /checkout
-
-
 Technologies Used
 Python
 FastAPI
@@ -181,8 +191,6 @@ Argon2
 Docker
 Docker Compose
 Swagger / OpenAPI
-
-
 Project Structure
 cloud-ecommerce-microservices/
 |
@@ -202,8 +210,6 @@ cloud-ecommerce-microservices/
     +-- product-service/
     +-- order-service/
     +-- cart-service/
-
-
 Environment Setup
 
 Create your local environment file from the example:
@@ -234,8 +240,6 @@ http://localhost:8000/docs
 http://localhost:8001/docs
 http://localhost:8002/docs
 http://localhost:8003/docs
-
-
 Future Work
 
 Possible future improvements include:
@@ -249,4 +253,4 @@ Author
 
 Dheeraj Kumar
 
-Built as a hands-on project to learn microservices, Docker, APIs, authentication, databases and cloud-native application development.
+Built as a hands-on project to learn microservices, Docker, APIs, authentication, databases, and cloud-native application development.
