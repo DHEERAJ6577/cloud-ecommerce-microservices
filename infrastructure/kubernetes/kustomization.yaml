@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ecommerce
+
+resources:
+
+  - namespace/ecommerce-namespace.yaml
+
+  - config/service-config.yaml
+
+  - databases/user-postgres-pvc.yaml
+  - databases/user-postgres-deployment.yaml
+  - databases/user-postgres-service.yaml
+
+  - databases/product-postgres-pvc.yaml
+  - databases/product-postgres-deployment.yaml
+  - databases/product-postgres-service.yaml
+
+  - databases/order-postgres-pvc.yaml
+  - databases/order-postgres-deployment.yaml
+  - databases/order-postgres-service.yaml
+
+  - databases/cart-postgres-pvc.yaml
+  - databases/cart-postgres-deployment.yaml
+  - databases/cart-postgres-service.yaml
+
+  - services/api-gateway-deployment.yaml
+  - services/api-gateway-service.yaml
+
+  - services/user-service-deployment.yaml
+  - services/user-service-service.yaml
+
+  - services/product-service-deployment.yaml
+  - services/product-service-service.yaml
+
+  - services/order-service-deployment.yaml
+  - services/order-service-service.yaml
+
+  - services/cart-service-deployment.yaml
+  - services/cart-service-service.yaml
