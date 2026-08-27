@@ -3,3 +3,6 @@ venv/
 __pycache__/
 *.pyc
 userdb_backup.sql
+
+# Kubernetes secrets
+infrastructure/kubernetes/config/*-secret.yaml
