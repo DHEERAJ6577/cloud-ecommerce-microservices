@@ -1,60 +1,47 @@
 # Cloud E-Commerce Microservices Platform
 
-A simple e-commerce backend built using FastAPI, Docker, PostgreSQL, JWT authentication, and microservices.
+A containerized e-commerce backend built with FastAPI, Docker, PostgreSQL, JWT authentication, and Kubernetes.
 
-This project was built as a hands-on learning project to understand how different microservices communicate with each other while maintaining their own databases.
+This is a hands-on microservices project created to understand how independent services communicate, how each service manages its own database, and how Kubernetes is used to deploy and manage the application.
 
-## Architecture
+**Architecture**
 
-![Cloud E-Commerce Microservices Architecture](docs/architecture.png)
-
-The application contains four main services:
-
-- User Service
-- Product Service
-- Order Service
-- Cart Service
-
-All requests from the client go through the API Gateway.
-
-Each service has its own PostgreSQL database.
-
- Request Flow
-
-
-
+```text
                          CLIENT
                            |
                            v
-                  API Gateway :8080
+                    API GATEWAY :8080
                            |
         +------------------+------------------+
         |                  |                  |
         v                  v                  v
- User Service       Product Service      Order Service
-    :8000                :8001               :8002
-        |                  |                  |
-        v                  v                  v
-    User DB            Product DB          Order DB
-   PostgreSQL          PostgreSQL          PostgreSQL
-                                               ^
+   USER SERVICE       PRODUCT SERVICE      ORDER SERVICE
+      :8000               :8001               :8002
+        |                   |                   |
+        v                   v                   v
+     USER DB            PRODUCT DB           ORDER DB
+    PostgreSQL          PostgreSQL           PostgreSQL
                                                |
-                                               | HTTP
-                                               |
-                                        Cart Service
-                                           :8003
                                                |
                                                v
-                                           Cart DB
-                                          PostgreSQL
+                                         CART SERVICE
+                                            :8003
+                                               |
+                                               v
+                                            CART DB
+                                           PostgreSQL
 
+The API Gateway is the main entry point for client requests.
+
+Each service is responsible for its own business logic and database.
 
 Services
+
 API Gateway
 
 Port: 8080
 
-The API Gateway is the main entry point for the application.
+The API Gateway is the main entry point to the application.
 
 It handles authentication and routes requests to the required microservice.
 
@@ -68,16 +55,19 @@ User registration
 Login
 User accounts
 User roles
+JWT generation
+
 Product Service
 
 Port: 8001
 
 Handles:
 
-Products
-Prices
+Product management
+Product prices
 Product stock
 Inventory updates
+
 Order Service
 
 Port: 8002
@@ -88,6 +78,7 @@ Order creation
 Order status
 Order cancellation
 Inventory coordination
+
 Cart Service
 
 Port: 8003
@@ -97,108 +88,93 @@ Handles:
 Shopping cart
 Cart items
 Checkout
-Database
 
-Each microservice has its own PostgreSQL database.
+Database Design
+
+Each service has its own PostgreSQL database.
 
 User Service
-    |
-    v
-userdb
+     |
+     v
+   userdb
 
 Product Service
-    |
-    v
-productdb
+     |
+     v
+  productdb
 
 Order Service
-    |
-    v
-orderdb
+     |
+     v
+   orderdb
 
 Cart Service
-    |
-    v
-cartdb
+     |
+     v
+   cartdb
 
+Services do not directly access each other's database tables.
 
-
-The services do not directly share database tables.
-
-This follows the database-per-service approach.
+They communicate through APIs.
 
 Authentication
 
 The application uses JWT authentication.
 
-User Login
-    |
-    v
+User
+  |
+  | Login
+  v
 User Service
-    |
-    v
-JWT Token
-    |
-    v
+  |
+  | JWT Token
+  v
 API Gateway
-    |
-    v
+  |
+  | Verify Token
+  v
 Authenticated Request
 
+The API Gateway extracts the user ID from the JWT and passes it to internal services using the X-User-ID header.
 
-The API Gateway gets the user ID from the JWT and passes it to internal services using the X-User-ID header.
-
-There are two roles:
+The application supports two roles:
 
 Customer
 
-Customers can:
-
-Manage their own account
-View products
-Manage cart items
-Checkout
-View their own orders
-Cancel their own pending orders
 Admin
 
-Admins can:
+Customers can manage their account, view products, manage their cart, checkout, view their orders, and cancel their own pending orders.
 
-Manage products
-Update order status
-Perform administrative operations
+Admins can manage products and update order status.
+
 Order Management
-
 
 Orders follow this lifecycle:
 
-pending
-   |
-   +------> confirmed ------> completed
-   |
-   +------> cancelled
-
-The Order Service checks the product, checks stock, gets the current price, calculates the order total, and creates the order.
-
-Customers can cancel their own pending orders.
-
-Admins can update order status.
+             pending
+                |
+        +-------+-------+
+        |               |
+        v               v
+    confirmed       cancelled
+        |
+        v
+    completed
 
 Cart and Checkout
 
-Adding a product to the cart does not reduce product stock.
+Adding an item to the cart does not reduce stock.
 
-Stock is reduced when checkout successfully creates the order.
+Stock is reduced only when checkout successfully creates an order.
 
+The checkout process is:
 
-
-Checkout Flow
 Customer
    |
    v
 Cart Service
    |
-   | POST /checkout
+   | Checkout
    v
 Order Service
    |
@@ -206,7 +182,7 @@ Order Service
    |
    +----> Check Stock
    |
-   +----> Get Price
+   +----> Get Current Price
    |
    +----> Reduce Stock
    |
@@ -217,7 +193,8 @@ Order Created
    |
    v
 Cart Cleared
-Inventory and Failure Handling
+
+Inventory Management
 
 The Product Service owns the inventory.
 
@@ -234,19 +211,21 @@ Reduce Stock
      v
 Create Order
      |
-     +------> Success
-     |
-     +------> Failure
-                |
-                v
-          Restore Stock
+   +---+---+
+   |       |
+Success   Failure
+   |       |
+   v       v
+ Done   Restore Stock
 
-This is a compensating action and not a distributed database transaction.
+If order creation fails after stock has been reduced, the application attempts to restore the stock.
 
-
+This is a compensating action, not a distributed database transaction.
 
 API Endpoints
+
 User Service
+
 GET    /users
 POST   /users
 POST   /login
@@ -254,12 +233,14 @@ PUT    /users/{user_id}
 DELETE /users/{user_id}
 
 Product Service
+
 GET    /products
 POST   /products
 PUT    /products/{product_id}
 DELETE /products/{product_id}
 
 Order Service
+
 POST   /orders
 GET    /orders
 GET    /orders/{order_id}
@@ -267,6 +248,7 @@ POST   /orders/{order_id}/cancel
 PUT    /orders/{order_id}/status
 
 Cart Service
+
 POST   /cart/items
 GET    /cart
 PUT    /cart/items/{product_id}
@@ -274,13 +256,14 @@ DELETE /cart/items/{product_id}
 DELETE /cart
 POST   /checkout
 
+Technology Stack
 
-Technologies Used
 Python
 FastAPI
-PostgreSQL
+Pydantic
 SQLAlchemy
 HTTPX
+PostgreSQL
 JWT
 Argon2
 Docker
@@ -290,8 +273,8 @@ Kind
 Kustomize
 Swagger / OpenAPI
 
-
 Project Structure
+
 cloud-ecommerce-microservices/
 |
 +-- README.md
@@ -305,34 +288,18 @@ cloud-ecommerce-microservices/
 +-- api-gateway/
 |
 +-- services/
-|   |
 |   +-- user-service/
 |   +-- product-service/
 |   +-- order-service/
 |   +-- cart-service/
 |
 +-- infrastructure/
-    |
     +-- kubernetes/
-        |
         +-- namespace/
-        |
         +-- config/
-        |
         +-- databases/
-        |
         +-- services/
-        |
         +-- kustomization.yaml
-Environment Setup
-
-Create your local environment file:
-
-Copy-Item .env.example .env
-
-Then add your local configuration.
-
-The real .env file is ignored by Git and should not be committed.
 
 Running with Docker Compose
 
@@ -345,7 +312,7 @@ Create the environment file:
 
 Copy-Item .env.example .env
 
-Build and start all services:
+Start the application:
 
 docker compose up -d --build
 
@@ -353,108 +320,60 @@ Check the containers:
 
 docker ps
 
-Main API documentation:
+Open the API documentation:
 
 http://localhost:8080/docs
-Kubernetes Deployment
 
-The application is also deployed on Kubernetes using Kind.
+Running with Kubernetes
 
-Kubernetes Architecture
-CLIENT
-   |
-   v
-API Gateway
+The application has also been deployed locally using Kubernetes with Kind.
 
+The Kubernetes setup contains:
 
-NodePort
-   |
-   +-------------------+-------------------+-------------------+
-   |                   |                   |                   |
-   v                   v                   v                   v
-User Service      Product Service      Order Service       Cart Service
- ClusterIP           ClusterIP           ClusterIP          ClusterIP
-   |                   |                   |                   |
-   v                   v                   v                   v
-User PostgreSQL   Product PostgreSQL   Order PostgreSQL   Cart PostgreSQL
-   |                   |                   |                   |
-   v                   v                   v                   v
-  PVC                 PVC                 PVC                PVC
-Kubernetes Tools
+Kind Cluster
+     |
+     v
+ecommerce Namespace
+     |
+     +----> API Gateway
+     |
+     +----> User Service
+     |
+     +----> Product Service
+     |
+     +----> Order Service
+     |
+     +----> Cart Service
+     |
+     +----> PostgreSQL Databases
 
-The project uses:
-
-Kind for the local Kubernetes cluster
-kubectl for Kubernetes management
-Kustomize for deploying the complete application
-Create the Kind Cluster
-
-Create the cluster:
-
-kind create cluster --name ecommerce-cluster
-
-Check the cluster:
-
-kubectl get nodes
-
-Create the application namespace:
-
-kubectl apply -f .\infrastructure\kubernetes\namespace\ecommerce-namespace.yaml
-Kubernetes Secrets
-
-Real Kubernetes Secret files are not committed to GitHub.
-
-Example Secret files are provided in:
-
-infrastructure/kubernetes/config/
-
-Create the real Secret files locally using the example files and your own values.
-
-The Secret files intentionally remain ignored by Git.
-
-Deploy the Application
-
-Kustomize can apply the Kubernetes configuration:
-
-kubectl apply -k .\infrastructure\kubernetes
-
-Check the Pods:
-
-kubectl get pods -n ecommerce
-
-Check the Services:
-
-kubectl get services -n ecommerce
-
-Check the PersistentVolumeClaims:
-
-kubectl get pvc -n ecommerce
 Kubernetes Services
 
-The API Gateway is exposed using NodePort.
+The API Gateway uses NodePort because it is the entry point for external requests.
 
 The internal microservices use ClusterIP.
 
 Client
-   |
-   v
+  |
+  v
 API Gateway
-   |
-   +----> User Service
-   |
-   +----> Product Service
-   |
-   +----> Order Service
-   |
-   +----> Cart Service
+NodePort
+  |
+  +----> User Service
+  |
+  +----> Product Service
+  |
+  +----> Order Service
+  |
+  +----> Cart Service
 
-NodePort is used for external access.
+NodePort provides external access to the application.
 
-ClusterIP is used for communication inside the Kubernetes cluster.
+ClusterIP provides internal communication between services.
 
-PostgreSQL Storage
+Persistent Storage
 
-Each PostgreSQL database uses its own PersistentVolumeClaim.
+Each PostgreSQL database has its own PersistentVolumeClaim.
 
 User PostgreSQL
       |
@@ -483,42 +402,41 @@ Health Checks
 The application services use Kubernetes readiness and liveness probes.
 
 Readiness Probe
-    |
-    v
-Is the service ready to receive requests?
+      |
+      v
+Is the service ready to receive traffic?
 
 Liveness Probe
-    |
-    v
-Is the application still running correctly?
+      |
+      v
+Is the application still healthy?
 
-Each service uses its /health endpoint for these checks.
+The services use the /health endpoint for these checks.
 
 Self-Healing
 
 Kubernetes maintains the desired number of Pods.
 
-For example:
-
-Desired Pods = 1
-      |
-      v
+Desired state
+1 Pod
+   |
+   v
 Pod crashes
-      |
-      v
-Actual Pods = 0
-      |
-      v
-Kubernetes creates a new Pod
-      |
-      v
+   |
+   v
+Actual state becomes 0
+   |
+   v
+Kubernetes creates a replacement Pod
+   |
+   v
 New Pod becomes Ready
 
-This project was tested by deleting the API Gateway Pod and observing Kubernetes create a replacement Pod.
+The API Gateway Pod was manually deleted during testing and Kubernetes automatically created a replacement Pod.
 
 Scaling
 
-Product Service was tested with two replicas.
+The Product Service was tested with two replicas.
 
 Product Service
       |
@@ -526,64 +444,104 @@ Product Service
       |
       +----> Product Pod 2
 
-The Kubernetes Service automatically keeps both ready Pods as endpoints.
-
 Scale the Product Service:
 
 kubectl scale deployment product-service --replicas=2 -n ecommerce
 
-Check:
+Check the Pods:
 
 kubectl get pods -n ecommerce -l app=product-service
+
 Kustomize
 
-Instead of applying every Kubernetes file separately, the project uses Kustomize.
+Kustomize is used to manage the Kubernetes configuration.
 
-Apply the complete Kubernetes configuration with:
+Instead of applying every YAML file separately:
+
+Kubernetes YAML files
+        |
+        v
+kustomization.yaml
+        |
+        v
+kubectl apply -k
+
+Validate the configuration:
+
+kubectl kustomize .\infrastructure\kubernetes
+
+Deploy the configuration:
 
 kubectl apply -k .\infrastructure\kubernetes
 
-Validate the generated configuration without applying it:
+Kubernetes Secrets
 
-kubectl kustomize .\infrastructure\kubernetes
-Kubernetes Testing
+Sensitive values such as database credentials and JWT secrets are not committed to GitHub.
 
-The Kubernetes deployment was tested through the following flow:
+Example Secret files are included for reference.
 
-API Gateway
+The real Secret files are ignored by Git.
+
+Testing
+
+The Kubernetes deployment was tested for:
+
+Service discovery
+ClusterIP communication
+NodePort access
+Persistent storage
+Readiness probes
+Liveness probes
+Self-healing
+Scaling
+Microservice communication
+End-to-end checkout
+
+End-to-End Checkout Test
+
+The complete checkout process was successfully tested inside Kubernetes.
+
+Example:
+
+Wireless Mouse
+Price: 2500
+
+First checkout:
+
+Quantity: 2
+Total: 5000
+
+Stock:
+17 -> 15
+
+Second checkout:
+
+Quantity: 1
+Total: 2500
+
+Stock:
+15 -> 14
+
+The orders were stored in the Order database and the cart was cleared after checkout.
+
+The complete flow was:
+
+Cart Service
      |
      v
-User Service
+Order Service
      |
      v
 Product Service
      |
      v
-Cart Service
+Stock Updated
      |
      v
-Order Service
-
-The checkout flow was also tested successfully.
-
-Example:
-
-Product Stock
-17
- |
- | Checkout
- v
-15
-
-A second checkout reduced the stock further:
-
-15
- |
- | Checkout
- v
-14
-
-Orders were created successfully and the cart was cleared after checkout.
+Order Created
+     |
+     v
+Cart Cleared
 
 Swagger Documentation
 
@@ -591,26 +549,24 @@ Main API documentation:
 
 http://localhost:8080/docs
 
-Other service documentation:
+Other services:
 
 http://localhost:8000/docs
 http://localhost:8001/docs
 http://localhost:8002/docs
 http://localhost:8003/docs
 
-For Kubernetes, services are normally accessed internally using their Kubernetes Service names.
-
 Future Improvements
-
-Possible future improvements include:
 
 React frontend
 GitHub Actions CI/CD
 Prometheus and Grafana
-Improved monitoring and logging
+Centralized logging
+Improved monitoring
 More advanced Kubernetes networking
+
 Author
 
 Dheeraj Kumar
 
-Built as a hands-on project to learn microservices, Docker, APIs, authentication, databases, and cloud-native application development.
+A hands-on cloud-native microservices project focused on FastAPI, Docker, PostgreSQL, Kubernetes, authentication, service communication, and deployment.
